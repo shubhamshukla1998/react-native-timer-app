@@ -1,4 +1,5 @@
-import React from "react";
+import React, { Component } from "react";
+import { Audio } from "expo-av";
 import {
   StyleSheet,
   Text,
@@ -7,8 +8,18 @@ import {
   TouchableOpacity,
   Dimensions,
   Picker,
-  Platform
+  Platform,
+  Vibration,
 } from "react-native";
+
+const wheelPickerData = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+];
 
 const screen = Dimensions.get("window");
 
@@ -17,87 +28,100 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#07121B",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   button: {
     borderWidth: 10,
-    borderColor: "#89AAFF",
+    borderColor: "#08F7FE",
     width: screen.width / 2,
     height: screen.width / 2,
     borderRadius: screen.width / 2,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 30
-  },
-  buttonStop: {
-    borderColor: "#FF851B"
+    marginTop: 30,
   },
   buttonText: {
     fontSize: 45,
-    color: "#89AAFF"
-  },
-  buttonTextStop: {
-    color: "#FF851B"
+    color: "#08F7FE",
   },
   timerText: {
     color: "#fff",
-    fontSize: 90
+    fontSize: 90,
+  },
+  buttonStop: {
+    borderColor: "#FF851B",
+  },
+  buttonTextStop: {
+    color: "#FF851B",
   },
   picker: {
-    width: 50,
+    width: 40,
     ...Platform.select({
       android: {
         color: "#fff",
         backgroundColor: "#07121B",
-        marginLeft: 10
-      }
-    })
+        marginLeft: 10,
+      },
+    }),
   },
   pickerItem: {
     color: "#fff",
-    fontSize: 20
+    fontSize: 20,
   },
   pickerContainer: {
     flexDirection: "row",
-    alignItems: "center"
-  }
+    alignItems: "center",
+  },
 });
 
-// 3 => 03, 10 => 10
-const formatNumber = number => `0${number}`.slice(-2);
+const formatNumber = (number) => `0${number}`.slice(-2);
 
-const getRemaining = time => {
+const getRemainingTime = (time) => {
   const minutes = Math.floor(time / 60);
   const seconds = time - minutes * 60;
+
   return { minutes: formatNumber(minutes), seconds: formatNumber(seconds) };
 };
 
-const createArray = length => {
+const createArray = (length) => {
   const arr = [];
   let i = 0;
-  while (i < length) {
+  while (i <= length) {
     arr.push(i.toString());
-    i += 1;
+    i++;
   }
-
   return arr;
 };
 
 const AVAILABLE_MINUTES = createArray(10);
 const AVAILABLE_SECONDS = createArray(60);
 
-export default class App extends React.Component {
+export default class App extends Component {
   state = {
-    remainingSeconds: 5,
+    remainingSeconds: 10,
     isRunning: false,
     selectedMinutes: "0",
-    selectedSeconds: "5"
+    selectedSeconds: "10",
   };
 
   interval = null;
 
+  async _playsound() {
+    const soundObject = new Audio.Sound();
+    try {
+      await soundObject.loadAsync(require("../assets/sounds/inflicted.mp3"));
+      await soundObject.playAsync();
+      // Your sound is playing!
+    } catch (error) {
+      // An error occurred!
+      console.log("error", error);
+    }
+  }
+
   componentDidUpdate(prevProp, prevState) {
-    if (this.state.remainingSeconds === 0 && prevState.remainingSeconds !== 0) {
+    if (this.state.remainingSeconds == -1 && prevState.remainingSeconds != -1) {
+      Vibration.vibrate(1000);
+      this._playsound();
       this.stop();
     }
   }
@@ -109,16 +133,16 @@ export default class App extends React.Component {
   }
 
   start = () => {
-    this.setState(state => ({
+    this.setState((state) => ({
       remainingSeconds:
-        parseInt(state.selectedMinutes, 10) * 60 +
-        parseInt(state.selectedSeconds, 10),
-      isRunning: true
+        parseInt(state.selectedMinutes) * 60 + parseInt(state.selectedSeconds),
+      isRunning: true,
     }));
 
     this.interval = setInterval(() => {
-      this.setState(state => ({
-        remainingSeconds: state.remainingSeconds - 1
+      this.setState((state) => ({
+        remainingSeconds: state.remainingSeconds - 1,
+        isRunning: true,
       }));
     }, 1000);
   };
@@ -126,24 +150,26 @@ export default class App extends React.Component {
   stop = () => {
     clearInterval(this.interval);
     this.interval = null;
+
     this.setState({
-      remainingSeconds: 5, // temporary
-      isRunning: false
+      remainingSeconds: 10,
+      isRunning: false,
     });
   };
 
-  renderPickers = () => (
+  renderPicker = () => (
     <View style={styles.pickerContainer}>
       <Picker
         style={styles.picker}
         itemStyle={styles.pickerItem}
         selectedValue={this.state.selectedMinutes}
-        onValueChange={itemValue => {
-          this.setState({ selectedMinutes: itemValue });
+        onValueChange={(itemValue) => {
+          this.setState({
+            selectedMinutes: itemValue,
+          });
         }}
-        mode="dropdown"
-      >
-        {AVAILABLE_MINUTES.map(value => (
+        mode="dropdown">
+        {AVAILABLE_MINUTES.map((value) => (
           <Picker.Item key={value} label={value} value={value} />
         ))}
       </Picker>
@@ -152,12 +178,13 @@ export default class App extends React.Component {
         style={styles.picker}
         itemStyle={styles.pickerItem}
         selectedValue={this.state.selectedSeconds}
-        onValueChange={itemValue => {
-          this.setState({ selectedSeconds: itemValue });
+        onValueChange={(itemValue) => {
+          this.setState({
+            selectedSeconds: itemValue,
+          });
         }}
-        mode="dropdown"
-      >
-        {AVAILABLE_SECONDS.map(value => (
+        mode="dropdown">
+        {AVAILABLE_SECONDS.map((value) => (
           <Picker.Item key={value} label={value} value={value} />
         ))}
       </Picker>
@@ -166,25 +193,24 @@ export default class App extends React.Component {
   );
 
   render() {
-    const { minutes, seconds } = getRemaining(this.state.remainingSeconds);
-
+    const { minutes, seconds } = getRemainingTime(this.state.remainingSeconds);
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         {this.state.isRunning ? (
           <Text style={styles.timerText}>{`${minutes}:${seconds}`}</Text>
         ) : (
-          this.renderPickers()
+          this.renderPicker()
         )}
+
         {this.state.isRunning ? (
           <TouchableOpacity
-            onPress={this.stop}
             style={[styles.button, styles.buttonStop]}
-          >
+            onPress={this.stop}>
             <Text style={[styles.buttonText, styles.buttonTextStop]}>Stop</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={this.start} style={styles.button}>
+          <TouchableOpacity style={styles.button} onPress={this.start}>
             <Text style={styles.buttonText}>Start</Text>
           </TouchableOpacity>
         )}
