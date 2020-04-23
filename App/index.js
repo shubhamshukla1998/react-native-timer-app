@@ -11,6 +11,7 @@ import {
   Platform,
   Vibration,
 } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const wheelPickerData = [
   "sunday",
